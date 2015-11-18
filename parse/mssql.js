@@ -20,76 +20,71 @@ ParseMsSql = function(opts) {
 
 inherits(ParseMsSql, ParseBase);
 
-ParseMsSql.prototype.saveTableDefinition = function(record, index, sql) {
-  // We are still in a connection context
-  // console.log(record);
-  var tableDef = {
-    name: record.TABLE_NAME
-  };
-
-
-  //console.log(tableDef);
-}
-
 // Override the parse method
 ParseMsSql.prototype.parse = function(callback) {
   var self = this;
+  self._parseCount = 0;
   sql.connect(this._options).then(function() {
-      var request = new sql.Request();
+    var request = new sql.Request();
 
-      request.query(ALL_TABLE_QUERY)
-        .then(function(recordset) {
+    request.query(ALL_TABLE_QUERY)
+      .then(function(recordset) {self._processTables(recordset, callback)})
+      .catch(function(err) {
+        if (err) {
+          callback(err);
+          throw (err);
+        }
+      });
+  });
 
-          self.tableDefs = recordset;
+}
 
-          recordset.forEach(function(record, i) {
-            var tableDef = {
-              name: record.TABLE_NAME,
-              columns: []
-            };
 
-            var request = new sql.Request();
+ParseMsSql.prototype._processTables = function(recordset, callback) {
+  var self = this;
+  self.tableDefs = recordset;
 
-            request.input('table_name', tableDef.name);
+  recordset.forEach(function(record, i) {
+    var tableDef = {
+      name: record.TABLE_NAME,
+      columns: []
+    };
 
-            request.execute('sp_columns')
-              .then(function(recordsets, returnValue) {
-                recordsets[0].forEach(function(record) {
-                  tableDef.columns.push({
-                    name: record.COLUMN_NAME,
-                    type: record.TYPE_NAME,
-                    precision: record.PRECISION,
-                    length: record.LENGTH,
-                    scale: record.SCALE,
-                    nullable: record.IS_NULLABLE,
-                    defaultValue: record.COLUMN_DEF
-                  });
-                });
+    var request = new sql.Request();
 
-                fs.writeFile(self._projectHome + '/' + tableDef.name + '.tabledef', JSON.stringify(tableDef, null, 2), function(err) {
-                  if (err) throw err;
-                });
-                
-              }).catch(function(err) {
+    request.input('table_name', tableDef.name);
 
-                if (err) {
-                  callback(err);
-                  throw err;
-                }
-              });
-
+    request.execute('sp_columns')
+      .then(function(recordsets, returnValue) {
+        recordsets[0].forEach(function(record) {
+          tableDef.columns.push({
+            name: record.COLUMN_NAME,
+            type: record.TYPE_NAME,
+            precision: record.PRECISION,
+            length: record.LENGTH,
+            scale: record.SCALE,
+            nullable: record.IS_NULLABLE,
+            defaultValue: record.COLUMN_DEF
           });
+        });
 
-        }).catch(function(err) {
-          if (err) {
-            callback(err);
-            throw (err);
+        fs.writeFile(self._projectHome + '/' + tableDef.name + '.tabledef', JSON.stringify(tableDef, null, 2), function(err) {
+          if (err) throw err;
+          self._parseCount =   self._parseCount + 1;
+          if (self._parseCount >= recordset.length) {
+            callback(null, "DONE");
           }
         });
-    })
-    .then(function() {
-      //callback(null, '2nd then');
-    });
+      })
+      .catch(function(err) {
+        if (err) {
+          callback(err);
+          throw err;
+        }
+      });
+
+  });
+
 }
 
 module.exports = ParseMsSql;

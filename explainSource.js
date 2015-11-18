@@ -45,11 +45,11 @@ fs.exists(projectHome, function(exists) {
 
 var db = parseFactory(program);
 
-db.parse(function(err){
+db.parse(function(err, msg){
   if (err){
     console.log(err);
     process.exit(1);
   }
-
+  console.log(msg);
   process.exit(0);
 });
