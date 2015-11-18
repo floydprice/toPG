@@ -1,0 +1,16 @@
+{
+  "name": "topg",
+  "version": "1.0.0",
+  "description": "Utilities for converting data from various datasources to Postgres",
+  "main": "toPg.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Floyd Price",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^2.9.0",
+    "mkdirp": "^0.5.1",
+    "mssql": "^2.3.2"
+  }
+}
